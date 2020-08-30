@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.loadbalancer.LoadBalancerClient;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -38,6 +40,9 @@ import co.com.udem.inmobiliariaclient.util.Constantes;
 public class InmobiliariaClientRestController {
 
 	@Autowired
+	LoadBalancerClient loadBalancer;
+
+	@Autowired
 	RestTemplate restTemplate;
 
 	@Autowired
@@ -49,11 +54,15 @@ public class InmobiliariaClientRestController {
 	@PostMapping("/autenticar")
 	public Map<String, String> autenticar(@RequestBody AutenticationRequestDTO autenticationRequestDTO) {
 
+		ServiceInstance serviceInstance = loadBalancer.choose("inmobiliaria");
+		String baseUrl = serviceInstance.getUri().toString();
+		baseUrl = baseUrl + "/auth/signin";
+
 		Map<String, String> response = new HashMap<>();
 
 		try {
-			ResponseEntity<String> postResponse = restTemplate.postForEntity("http://localhost:9090/auth/signin",
-					autenticationRequestDTO, String.class);
+			ResponseEntity<String> postResponse = restTemplate.postForEntity(baseUrl, autenticationRequestDTO,
+					String.class);
 			Gson g = new Gson();
 			AutenticationResponseDTO autenticationResponseDTO = g.fromJson(postResponse.getBody(),
 					AutenticationResponseDTO.class);
@@ -90,8 +99,11 @@ public class InmobiliariaClientRestController {
 		Map<String, String> vars = new HashMap<>();
 		vars.put("username", username);
 
-		ResponseEntity<String> response = restTemplate.exchange("http://localhost:9090/propiedadesUsuario/{username}",
-				HttpMethod.GET, entity, String.class, vars);
+		ServiceInstance serviceInstance = loadBalancer.choose("inmobiliaria");
+		String baseUrl = serviceInstance.getUri().toString();
+		baseUrl = baseUrl + "propiedadesUsuario/{username}";
+
+		ResponseEntity<String> response = restTemplate.exchange(baseUrl, HttpMethod.GET, entity, String.class, vars);
 		try {
 			listaPropiedadDTO = new ObjectMapper().readValue(response.getBody(),
 					new TypeReference<List<PropiedadDTO>>() {
@@ -115,8 +127,11 @@ public class InmobiliariaClientRestController {
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		HttpEntity<UsuarioDTO> entity = new HttpEntity<>(usuarioDTO, headers);
 
-		ResponseEntity<String> responseApi = restTemplate.exchange("http://localhost:9090/usuarios/addUsuario",
-				HttpMethod.POST, entity, String.class);
+		ServiceInstance serviceInstance = loadBalancer.choose("inmobiliaria");
+		String baseUrl = serviceInstance.getUri().toString();
+		baseUrl = baseUrl + "/usuarios/addUsuario";
+
+		ResponseEntity<String> responseApi = restTemplate.exchange(baseUrl, HttpMethod.POST, entity, String.class);
 
 		if (responseApi.getStatusCode() == HttpStatus.OK) {
 			response.put(Constantes.CODIGO_HTTP, "200");
@@ -144,9 +159,11 @@ public class InmobiliariaClientRestController {
 		Map<String, String> vars = new HashMap<>();
 		vars.put("username", username);
 
-		ResponseEntity<String> responseApi = restTemplate.exchange(
-				"http://localhost:9090/propiedades/addPropiedad/{username}", HttpMethod.GET, entity, String.class,
-				vars);
+		ServiceInstance serviceInstance = loadBalancer.choose("inmobiliaria");
+		String baseUrl = serviceInstance.getUri().toString();
+		baseUrl = baseUrl + "/propiedades/addPropiedad/{username}";
+
+		ResponseEntity<String> responseApi = restTemplate.exchange(baseUrl, HttpMethod.POST, entity, String.class, vars);
 
 		if (responseApi.getStatusCode() == HttpStatus.OK) {
 			response.put(Constantes.CODIGO_HTTP, "200");
@@ -171,8 +188,11 @@ public class InmobiliariaClientRestController {
 		headers.set("Authorization", "Bearer " + token);
 		HttpEntity<List<PropiedadDTO>> entity = new HttpEntity<>(listaPropiedadDTO, headers);
 
-		ResponseEntity<String> responseApi = restTemplate.exchange("http://localhost:9090/propiedades/filtroavanzado",
-				HttpMethod.GET, entity, String.class);
+		ServiceInstance serviceInstance = loadBalancer.choose("inmobiliaria");
+		String baseUrl = serviceInstance.getUri().toString();
+		baseUrl = baseUrl + "/propiedades/filtroavanzado";
+
+		ResponseEntity<String> responseApi = restTemplate.exchange(baseUrl, HttpMethod.GET, entity, String.class);
 
 		try {
 			listaPropiedadDTO = new ObjectMapper().readValue(responseApi.getBody(),
@@ -202,9 +222,12 @@ public class InmobiliariaClientRestController {
 		vars.put("area", customQuery.get("area"));
 		vars.put("hab", customQuery.get("hab"));
 		vars.put("valor", customQuery.get("valor"));
-		ResponseEntity<String> responseApi = restTemplate.exchange(
-				"http://localhost:9090/propiedades/filtro?area={area}&habitaciones={habitaciones}&valor={valor}", HttpMethod.GET, entity,
-				String.class, vars);
+
+		ServiceInstance serviceInstance = loadBalancer.choose("inmobiliaria");
+		String baseUrl = serviceInstance.getUri().toString();
+		baseUrl = baseUrl + "/filtro?area={area}&habitaciones={habitaciones}&valor={valor}";
+
+		ResponseEntity<String> responseApi = restTemplate.exchange(baseUrl, HttpMethod.GET, entity, String.class, vars);
 
 		try {
 			listapropiedadDTO = new ObjectMapper().readValue(responseApi.getBody(),
